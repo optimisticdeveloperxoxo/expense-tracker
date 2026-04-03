@@ -2,6 +2,10 @@
 SpendSense - Personal Expense Tracker
 Full-stack Flask + SQLite with user auth, per-user data, UPI SMS parser
 """
+import os
+
+port = int(os.environ.get("PORT", 5000))
+app.run(host="0.0.0.0", port=port)
 
 from flask import (Flask, render_template, request, redirect,
                    url_for, flash, jsonify, session)
