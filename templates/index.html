@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SpendSense{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard 🚀</h1>
+    <p class="page-sub">Welcome back, {{ session.user_name }} — here's your financial overview</p>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<section class="stats-bar">
+  <div class="stat-card sc-total">
+    <div class="stat-icon-wrap si-cyan">💰</div>
+    <div class="stat-body">
+      <p class="stat-label">This Month's Spending</p>
+      <h2 class="stat-value sv-cyan">₹{{ "{:,.2f}".format(total_this_month) }}</h2>
+      {% if budget %}
+        {% set pct = [[total_this_month / budget * 100, 0]|max, 100]|min %}
+        <div class="prog-wrap">
+          <div class="prog-track">
+            <div class="prog-fill {{ 'over' if budget_exceeded }}" style="width:{{ pct }}%"></div>
+          </div>
+          <span class="prog-label">
+            {% if budget_exceeded %}⚠️ Over by ₹{{ "{:,.0f}".format(total_this_month - budget) }}
+            {% else %}₹{{ "{:,.0f}".format(budget - total_this_month) }} remaining{% endif %}
+          </span>
+        </div>
+      {% else %}
+        <p class="stat-sub">No budget set</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stat-card sc-count">
+    <div class="stat-icon-wrap si-violet">📊</div>
+    <div class="stat-body">
+      <p class="stat-label">Transactions</p>
+      <h2 class="stat-value sv-violet">{{ expenses|length }}</h2>
+      <p class="stat-sub">filtered results</p>
+    </div>
+  </div>
+
+  <div class="stat-card sc-top">
+    <div class="stat-icon-wrap si-green">🏆</div>
+    <div class="stat-body">
+      <p class="stat-label">Top Category</p>
+      <h2 class="stat-value sv-green" style="font-size:1.15rem">{{ category_totals[0].category if category_totals else "—" }}</h2>
+      <p class="stat-sub">{% if category_totals %}₹{{ "{:,.0f}".format(category_totals[0].total) }}{% endif %}</p>
+    </div>
+  </div>
+
+  <div class="stat-card sc-budget">
+    <div class="stat-icon-wrap si-amber">🎯</div>
+    <div class="stat-body">
+      <p class="stat-label">Monthly Budget</p>
+      <h2 class="stat-value sv-amber">{{ "₹{:,.0f}".format(budget) if budget else "Not Set" }}</h2>
+      <button class="btn-ghost sm" onclick="openBudgetModal('{{ selected_month }}')" style="margin-top:.45rem">
+        {{ "Update" if budget else "Set Budget" }}
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Main Grid -->
+<div class="main-grid">
+  <aside class="sidebar-col">
+    <div class="card">
+      <div class="card-header">
+        <h3>Category Split</h3>
+        <span class="badge">{{ selected_month }}</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="categoryChart"></canvas>
+        <div class="chart-empty" id="chartEmpty" style="display:none">
+          <span style="font-size:2rem">📭</span>
+          <span>No data this month</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3>Category Breakdown</h3></div>
+      {% if category_totals %}
+        {% set grand_total = category_totals|sum(attribute='total') %}
+        <ul class="category-list">
+          {% for ct in category_totals %}
+            <li class="category-item">
+              <span class="cat-dot" style="background:{{ {'Food':'#FF6B6B','Travel':'#4ECDC4','Shopping':'#FFD93D','Entertainment':'#A29BFE','Health':'#6BCB77','Education':'#60A5FA','Others':'#FB923C'}.get(ct.category,'#ccc') }}"></span>
+              <span class="cat-name">{{ ct.category }}</span>
+              <span class="cat-pct">{{ "{:.0f}".format(ct.total / grand_total * 100) }}%</span>
+              <span class="cat-amount">₹{{ "{:,.0f}".format(ct.total) }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-text">No expenses this period.</p>
+      {% endif %}
+    </div>
+  </aside>
+
+  <main>
+    <!-- Filter -->
+    <div class="filter-bar">
+      <form method="GET" action="/" style="display:contents">
+        <div class="fg">
+          <label>Month</label>
+          <input type="month" name="month" value="{{ selected_month }}" class="form-input" style="width:180px" onchange="this.form.submit()">
+        </div>
+        <div class="fg">
+          <label>Category</label>
+          <select name="category" class="form-input" style="width:170px" onchange="this.form.submit()">
+            <option value="">All Categories</option>
+            {% for cat in categories %}
+              <option value="{{ cat }}" {{ "selected" if selected_category == cat }}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <a href="/" class="btn-ghost">Reset</a>
+      </form>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Expense List</h3>
+        <a href="/add" class="btn sm">＋ Add New</a>
+      </div>
+      {% if expenses %}
+      <div class="table-wrap">
+        <table class="expense-table">
+          <thead><tr>
+            <th>#</th><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Source</th><th>Actions</th>
+          </tr></thead>
+          <tbody>
+            {% set cat_class = {'Food':'cb-food','Travel':'cb-travel','Shopping':'cb-shopping','Entertainment':'cb-entertainment','Health':'cb-health','Education':'cb-education','Others':'cb-others'} %}
+            {% for exp in expenses %}
+            <tr>
+              <td class="row-num">{{ loop.index }}</td>
+              <td>{{ exp.date }}</td>
+              <td><span class="cat-badge {{ cat_class.get(exp.category,'cb-others') }}">{{ exp.category }}</span></td>
+              <td class="desc-col">{{ exp.description or "—" }}</td>
+              <td class="amount-col">₹{{ "{:,.2f}".format(exp.amount) }}</td>
+              <td>
+                <span class="cat-badge {{ 'cb-upi' if exp.source == 'upi' else 'cb-manual' }}">
+                  {{ "📲 UPI" if exp.source == "upi" else "✍️ Manual" }}
+                </span>
+              </td>
+              <td class="actions-col">
+                <a href="/edit/{{ exp.id }}" class="action-btn" title="Edit">✏️</a>
+                <form method="POST" action="/delete/{{ exp.id }}" style="display:inline"
+                      onsubmit="return confirm('Delete this expense?')">
+                  <button type="submit" class="action-btn del-btn" title="Delete">🗑️</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="foot-label">Total</td>
+              <td class="foot-total">₹{{ "{:,.2f}".format(expenses|sum(attribute='amount')) }}</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">💸</div>
+        <h4>No expenses found</h4>
+        <p>Try changing filters or <a href="/add">add a new expense</a></p>
+      </div>
+      {% endif %}
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CAT_COLORS = {
+  Food:'#FF6B6B',Travel:'#4ECDC4',Shopping:'#FFD93D',
+  Entertainment:'#A29BFE',Health:'#6BCB77',Education:'#60A5FA',Others:'#FB923C'
+};
+async function loadChart(){
+  const month = document.querySelector('[name="month"]')?.value || "";
+  const res   = await fetch(`/api/chart_data?month=${month}`);
+  const data  = await res.json();
+  const canvas = document.getElementById("categoryChart");
+  const empty  = document.getElementById("chartEmpty");
+  if(!data.labels.length){canvas.style.display="none";empty.style.display="flex";return;}
+  canvas.style.display="";empty.style.display="none";
+  new Chart(canvas,{
+    type:"doughnut",
+    data:{
+      labels:data.labels,
+      datasets:[{
+        data:data.values,
+        backgroundColor:data.labels.map(l=>CAT_COLORS[l]||"#ccc"),
+        borderColor:"rgba(13,21,37,0.85)",borderWidth:3,hoverOffset:10
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:"65%",
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:"rgba(6,10,20,0.97)",
+          titleColor:"#f0f6ff",bodyColor:"#f0f6ff",
+          borderColor:"rgba(0,212,255,0.3)",borderWidth:1,
+          padding:14,cornerRadius:12,
+          callbacks:{label:ctx=>` ₹${Number(ctx.parsed).toLocaleString('en-IN',{minimumFractionDigits:2})}`}
+        }
+      },
+      animation:{animateRotate:true,duration:900}
+    }
+  });
+}
+function openBudgetModal(month){
+  document.getElementById("modalBudgetMonth").value = month || "";
+  document.getElementById("budgetModal").classList.add("active");
+}
+document.querySelectorAll(".flash").forEach(f=>{
+  setTimeout(()=>{f.style.opacity="0";f.style.transition="opacity .4s";},4000);
+  setTimeout(()=>f.remove(),4500);
+});
+document.querySelectorAll(".expense-table tbody tr").forEach((r,i)=>{
+  r.style.opacity="0";r.style.transform="translateY(8px)";
+  r.style.transition=`opacity .3s ease ${i*.04}s,transform .3s ease ${i*.04}s`;
+  requestAnimationFrame(()=>{r.style.opacity="1";r.style.transform="translateY(0)";});
+});
+loadChart();
+</script>
+{% endblock %}
