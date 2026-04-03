@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up — SpendSense</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-split">
+    <div class="auth-hero">
+      <div class="hero-logo">
+        <div class="hero-logo-icon">💹</div>
+        <span class="hero-logo-name">SpendSense</span>
+      </div>
+      <div class="hero-body">
+        <h2 class="hero-title">Start your<br><span>financial journey</span></h2>
+        <p class="hero-desc">Create your free account and start tracking every expense. Your data stays private — each account is completely separate.</p>
+      </div>
+      <div class="hero-feats">
+        <div class="hero-feat"><div class="feat-dot" style="background:rgba(0,212,255,.2)">🔒</div>Secure password hashing</div>
+        <div class="hero-feat"><div class="feat-dot" style="background:rgba(124,58,237,.2)">👤</div>100% private per-user data</div>
+        <div class="hero-feat"><div class="feat-dot" style="background:rgba(0,229,160,.2)">📲</div>Paste SMS to import UPI</div>
+        <div class="hero-feat"><div class="feat-dot" style="background:rgba(255,179,71,.2)">🆓</div>Free forever, no ads</div>
+      </div>
+    </div>
+    <div class="auth-form-panel">
+      <div class="auth-logo-sm">
+        <div class="auth-logo-sm-icon">💹</div>
+        <span class="auth-logo-sm-name">SpendSense</span>
+      </div>
+      <div class="auth-head">
+        <h2>Create account ✨</h2>
+        <p>Start your free financial journey today</p>
+      </div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-container">
+            {% for cat, msg in messages %}
+              <div class="flash flash-{{ cat }}"><span>{{ msg }}</span><button onclick="this.parentElement.remove()">×</button></div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      <form method="POST" action="/signup">
+        <div class="auth-field">
+          <label>Full Name</label>
+          <input type="text" name="name" class="auth-input" placeholder="Your full name"
+                 value="{{ form_data.get('name','') }}" required autofocus>
+        </div>
+        <div class="auth-field">
+          <label>Email Address</label>
+          <input type="email" name="email" class="auth-input" placeholder="you@example.com"
+                 value="{{ form_data.get('email','') }}" required>
+        </div>
+        <div class="auth-field">
+          <label>Password <span style="color:var(--t3);font-size:.75em;text-transform:none">(min. 6 characters)</span></label>
+          <input type="password" name="password" class="auth-input" placeholder="Choose a strong password" required>
+        </div>
+        <button type="submit" class="auth-submit">Create Account →</button>
+      </form>
+      <div class="auth-switch">Already have an account? <a href="/login">Log in</a></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

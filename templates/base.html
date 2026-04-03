@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}SpendSense{% endblock %}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══════════════════════════════ -->
+<nav class="sidebar" id="sidebar">
+
+  <!-- Logo → clickable back to dashboard -->
+  <a href="/" class="sb-brand" title="Go to Dashboard">
+    <div class="sb-brand-icon">💹</div>
+    <span class="sb-brand-name">SpendSense</span>
+  </a>
+
+  <div class="sb-user">
+    <div class="sb-avatar">{{ session.user_name[0].upper() }}</div>
+    <div>
+      <div class="sb-uname">{{ session.user_name }}</div>
+      <div class="sb-email">{{ session.user_email }}</div>
+    </div>
+  </div>
+
+  <div class="nav-sec-label">Main</div>
+  <ul class="nav-links">
+    <li><a href="/" class="{{ 'active' if request.path == '/' }}">
+      <span class="nav-icon">🏠</span><span>Dashboard</span></a></li>
+    <li><a href="/add" class="{{ 'active' if request.path == '/add' }}">
+      <span class="nav-icon">➕</span><span>Add Expense</span></a></li>
+  </ul>
+
+  <div class="nav-sec-label">Integrations</div>
+  <ul class="nav-links">
+    <li><a href="/upi" class="{{ 'active' if request.path == '/upi' }}">
+      <span class="nav-icon">📲</span><span>UPI Tracker</span></a></li>
+  </ul>
+
+  <div class="nav-sec-label">Tools</div>
+  <ul class="nav-links">
+    <li>
+      <button onclick="toggleCalculator()" id="calcNavBtn">
+        <span class="nav-icon">🧮</span><span>Calculator</span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="sb-footer">
+    <a href="/logout" class="logout-btn">
+      <span class="nav-icon">🚪</span><span>Log Out</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ═══ FLOATING CALCULATOR ═══════════════════ -->
+<div id="calcWidget" class="calc-widget">
+  <div class="calc-header" id="calcDragHandle">
+    <div class="calc-title-row">
+      <span class="calc-title-icon">🧮</span>
+      <span class="calc-title-text">Calculator</span>
+    </div>
+    <div class="calc-header-btns">
+      <button class="calc-hbtn" onclick="calcInput('AC')" title="Clear all">C</button>
+      <button class="calc-hbtn calc-close" onclick="toggleCalculator()" title="Close">×</button>
+    </div>
+  </div>
+  <div class="calc-screen">
+    <div class="calc-expr" id="calcExpr">&nbsp;</div>
+    <div class="calc-display" id="calcDisplay">0</div>
+  </div>
+  <div class="calc-grid">
+    <button class="ck ck-fn"  onclick="calcInput('AC')">AC</button>
+    <button class="ck ck-fn"  onclick="calcInput('+/-')">+/−</button>
+    <button class="ck ck-fn"  onclick="calcInput('%')">%</button>
+    <button class="ck ck-op"  onclick="calcInput('÷')">÷</button>
+
+    <button class="ck" onclick="calcInput('7')">7</button>
+    <button class="ck" onclick="calcInput('8')">8</button>
+    <button class="ck" onclick="calcInput('9')">9</button>
+    <button class="ck ck-op"  onclick="calcInput('×')">×</button>
+
+    <button class="ck" onclick="calcInput('4')">4</button>
+    <button class="ck" onclick="calcInput('5')">5</button>
+    <button class="ck" onclick="calcInput('6')">6</button>
+    <button class="ck ck-op"  onclick="calcInput('−')">−</button>
+
+    <button class="ck" onclick="calcInput('1')">1</button>
+    <button class="ck" onclick="calcInput('2')">2</button>
+    <button class="ck" onclick="calcInput('3')">3</button>
+    <button class="ck ck-op"  onclick="calcInput('+')">+</button>
+
+    <button class="ck ck-zero" onclick="calcInput('0')">0</button>
+    <button class="ck" onclick="calcInput('.')">.</button>
+    <button class="ck ck-eq"  onclick="calcInput('=')">=</button>
+  </div>
+</div>
+
+<!-- ═══ MOBILE TOPBAR ═════════════════════════ -->
+<header class="topbar">
+  <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+  <a href="/" class="topbar-brand">💹 SpendSense</a>
+  <a href="/add" class="btn sm">+ Add</a>
+</header>
+
+<!-- ═══ PAGE CONTENT ══════════════════════════ -->
+<div class="page-wrap">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for cat, msg in messages %}
+          <div class="flash flash-{{ cat }}">
+            <span>{{ msg }}</span>
+            <button onclick="this.parentElement.remove()">×</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+
+<!-- ═══ BUDGET MODAL ══════════════════════════ -->
+<div class="modal-overlay" id="budgetModal" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>💰 Set Monthly Budget</h3>
+      <button class="modal-close" onclick="document.getElementById('budgetModal').classList.remove('active')">×</button>
+    </div>
+    <form method="POST" action="/set_budget">
+      <div class="form-group">
+        <label class="form-label">Month</label>
+        <input type="month" name="month" id="modalBudgetMonth" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Budget Amount (₹)</label>
+        <input type="number" name="budget_amount" class="form-input" placeholder="e.g. 10000" min="1" step="0.01">
+      </div>
+      <button type="submit" class="btn lg" style="width:100%;justify-content:center">Save Budget 💾</button>
+    </form>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

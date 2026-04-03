@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SpendSense{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard 🚀</h1>
+    <p class="page-sub">Welcome back, {{ session.user_name }} — here's your financial overview</p>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<section class="stats-bar">
+  <div class="stat-card sc-total">
+    <div class="stat-icon-wrap si-cyan">💰</div>
+    <div class="stat-body">
+      <p class="stat-label">This Month's Spending</p>
+      <h2 class="stat-value sv-cyan">₹{{ "{:,.2f}".format(total_this_month) }}</h2>
+      {% if budget %}
+        {% set pct = [[total_this_month / budget * 100, 0]|max, 100]|min %}
+        <div class="prog-wrap">
+          <div class="prog-track">
+            <div class="prog-fill {{ 'over' if budget_exceeded }}" style="width:{{ pct }}%"></div>
+          </div>
+          <span class="prog-label">
+            {% if budget_exceeded %}⚠️ Over by ₹{{ "{:,.0f}".format(total_this_month - budget) }}
+            {% else %}₹{{ "{:,.0f}".format(budget - total_this_month) }} remaining{% endif %}
+          </span>
+        </div>
+      {% else %}
+        <p class="stat-sub">No budget set</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="stat-card sc-count">
+    <div class="stat-icon-wrap si-violet">📊</div>
+    <div class="stat-body">
+      <p class="stat-label">Transactions</p>
+      <h2 class="stat-value sv-violet">{{ expenses|length }}</h2>
+      <p class="stat-sub">filtered results</p>
+    </div>
+  </div>
+  <div class="stat-card sc-top">
+    <div class="stat-icon-wrap si-green">🏆</div>
+    <div class="stat-body">
+      <p class="stat-label">Top Category</p>
+      <h2 class="stat-value sv-green" style="font-size:1.15rem">{{ category_totals[0].category if category_totals else "—" }}</h2>
+      <p class="stat-sub">{% if category_totals %}₹{{ "{:,.0f}".format(category_totals[0].total) }}{% endif %}</p>
+    </div>
+  </div>
+  <div class="stat-card sc-budget">
+    <div class="stat-icon-wrap si-amber">🎯</div>
+    <div class="stat-body">
+      <p class="stat-label">Monthly Budget</p>
+      <h2 class="stat-value sv-amber">{{ "₹{:,.0f}".format(budget) if budget else "Not Set" }}</h2>
+      <button class="btn-ghost sm" onclick="openBudgetModal('{{ selected_month }}')" style="margin-top:.45rem">
+        {{ "Update" if budget else "Set Budget" }}
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Main Grid -->
+<div class="main-grid">
+  <aside class="sidebar-col">
+
+    <!-- Doughnut Chart Card — click to open modal -->
+    <div class="card chart-card-clickable" id="chartCardOuter" onclick="openChartModal()" title="Click to expand chart">
+      <div class="card-header">
+        <h3>Category Split</h3>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <span class="badge">{{ selected_month }}</span>
+          <span class="chart-expand-badge">🔍 Expand</span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="categoryChart"></canvas>
+        <div class="chart-empty" id="chartEmpty" style="display:none">
+          <span style="font-size:2rem">📭</span>
+          <span>No data this month</span>
+        </div>
+      </div>
+      <div class="chart-click-hint" id="chartClickHint">
+        <span>📊 Click chart to see full analysis</span>
+      </div>
+    </div>
+
+    <!-- Category breakdown list -->
+    <div class="card">
+      <div class="card-header"><h3>Category Breakdown</h3></div>
+      {% if category_totals %}
+        {% set grand_total = category_totals|sum(attribute='total') %}
+        <ul class="category-list">
+          {% for ct in category_totals %}
+            <li class="category-item">
+              <span class="cat-dot" style="background:{{ {'Food':'#FF6B6B','Travel':'#4ECDC4','Shopping':'#FFD93D','Entertainment':'#A29BFE','Health':'#6BCB77','Education':'#60A5FA','Others':'#FB923C'}.get(ct.category,'#ccc') }}"></span>
+              <span class="cat-name">{{ ct.category }}</span>
+              <span class="cat-pct">{{ "{:.0f}".format(ct.total / grand_total * 100) }}%</span>
+              <span class="cat-amount">₹{{ "{:,.0f}".format(ct.total) }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-text">No expenses this period.</p>
+      {% endif %}
+    </div>
+  </aside>
+
+  <main>
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <form method="GET" action="/" style="display:contents">
+        <div class="fg">
+          <label>Month</label>
+          <input type="month" name="month" value="{{ selected_month }}" class="form-input" style="width:180px" onchange="this.form.submit()">
+        </div>
+        <div class="fg">
+          <label>Category</label>
+          <select name="category" class="form-input" style="width:170px" onchange="this.form.submit()">
+            <option value="">All Categories</option>
+            {% for cat in categories %}
+              <option value="{{ cat }}" {{ "selected" if selected_category == cat }}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <a href="/" class="btn-ghost">Reset</a>
+      </form>
+    </div>
+
+    <!-- Expense Table -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Expense List</h3>
+        <a href="/add" class="btn sm">＋ Add New</a>
+      </div>
+      {% if expenses %}
+      <div class="table-wrap">
+        <table class="expense-table">
+          <thead><tr>
+            <th>#</th><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Source</th><th>Actions</th>
+          </tr></thead>
+          <tbody>
+            {% set cat_class = {'Food':'cb-food','Travel':'cb-travel','Shopping':'cb-shopping','Entertainment':'cb-entertainment','Health':'cb-health','Education':'cb-education','Others':'cb-others'} %}
+            {% for exp in expenses %}
+            <tr>
+              <td class="row-num">{{ loop.index }}</td>
+              <td>{{ exp.date }}</td>
+              <td><span class="cat-badge {{ cat_class.get(exp.category,'cb-others') }}">{{ exp.category }}</span></td>
+              <td class="desc-col">{{ exp.description or "—" }}</td>
+              <td class="amount-col">₹{{ "{:,.2f}".format(exp.amount) }}</td>
+              <td><span class="cat-badge {{ 'cb-upi' if exp.source == 'upi' else 'cb-manual' }}">
+                {{ "📲 UPI" if exp.source == "upi" else "✍️ Manual" }}
+              </span></td>
+              <td class="actions-col">
+                <a href="/edit/{{ exp.id }}" class="action-btn" title="Edit">✏️</a>
+                <form method="POST" action="/delete/{{ exp.id }}" style="display:inline"
+                      onsubmit="return confirm('Delete this expense?')">
+                  <button type="submit" class="action-btn del-btn" title="Delete">🗑️</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="foot-label">Total</td>
+              <td class="foot-total">₹{{ "{:,.2f}".format(expenses|sum(attribute='amount')) }}</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">💸</div>
+        <h4>No expenses found</h4>
+        <p>Try changing filters or <a href="/add">add a new expense</a></p>
+      </div>
+      {% endif %}
+    </div>
+  </main>
+</div>
+
+<!-- ═══ CHART DETAIL MODAL ════════════════════ -->
+<div class="modal-overlay" id="chartModal" onclick="if(event.target===this)closeChartModal()">
+  <div class="chart-modal">
+
+    <!-- Header -->
+    <div class="chart-modal-header">
+      <div class="chart-modal-title-group">
+        <h2 class="chart-modal-title">📊 Spending Analysis</h2>
+        <p class="chart-modal-sub">Detailed category breakdown — {{ selected_month }}</p>
+      </div>
+      <div class="chart-modal-controls">
+        <!-- Chart type switcher -->
+        <div class="chart-type-switcher">
+          <button class="ctsw-btn active" id="btnDoughnut" onclick="switchChart('doughnut')" title="Doughnut chart">
+            <span>🍩</span> Donut
+          </button>
+          <button class="ctsw-btn" id="btnBar" onclick="switchChart('bar')" title="Bar chart">
+            <span>📊</span> Bar
+          </button>
+          <button class="ctsw-btn" id="btnLine" onclick="switchChart('line')" title="Line chart">
+            <span>📈</span> Line
+          </button>
+        </div>
+        <button class="modal-close" onclick="closeChartModal()">×</button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="chart-modal-body">
+
+      <!-- Big chart area -->
+      <div class="chart-modal-canvas-wrap">
+        <canvas id="modalChart"></canvas>
+        <div class="chart-modal-empty" id="modalEmpty" style="display:none">
+          <span style="font-size:3rem">📭</span>
+          <p>No expenses for this period</p>
+        </div>
+      </div>
+
+      <!-- Stats sidebar -->
+      <div class="chart-modal-stats">
+        <div class="cms-total-block">
+          <p class="cms-label">Total Spending</p>
+          <p class="cms-total-val" id="cmsTotal">₹0</p>
+        </div>
+        <div class="cms-avg-block">
+          <p class="cms-label">Avg per Category</p>
+          <p class="cms-avg-val" id="cmsAvg">₹0</p>
+        </div>
+        <div class="cms-count-block">
+          <p class="cms-label">Categories</p>
+          <p class="cms-count-val" id="cmsCount">0</p>
+        </div>
+        <div class="cms-divider"></div>
+        <p class="cms-section-label">Category Breakdown</p>
+        <div id="cmsList" class="cms-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── colour maps ── */
+const CAT_COLORS = {
+  Food:'#FF6B6B', Travel:'#4ECDC4', Shopping:'#FFD93D',
+  Entertainment:'#A29BFE', Health:'#6BCB77', Education:'#60A5FA', Others:'#FB923C'
+};
+const CAT_ICONS = {
+  Food:'🍔', Travel:'✈️', Shopping:'🛍️', Entertainment:'🎬',
+  Health:'💊', Education:'📚', Others:'📦'
+};
+
+let dashChart   = null;
+let modalChart  = null;
+let chartData   = { labels:[], values:[] };
+let currentType = 'doughnut';
+
+/* ── Load small dashboard donut ── */
+async function loadChart(){
+  const month = document.querySelector('[name="month"]')?.value || "";
+  const res   = await fetch(`/api/chart_data?month=${month}`);
+  chartData   = await res.json();
+
+  const canvas = document.getElementById("categoryChart");
+  const empty  = document.getElementById("chartEmpty");
+  const hint   = document.getElementById("chartClickHint");
+  const card   = document.getElementById("chartCardOuter");
+
+  if(!chartData.labels.length){
+    canvas.style.display="none";
+    empty.style.display="flex";
+    if(hint) hint.style.display="none";
+    if(card) card.style.cursor="default";
+    return;
+  }
+  canvas.style.display="";
+  empty.style.display="none";
+
+  if(dashChart){ dashChart.destroy(); dashChart=null; }
+  dashChart = new Chart(canvas, {
+    type:"doughnut",
+    data:{
+      labels: chartData.labels,
+      datasets:[{
+        data: chartData.values,
+        backgroundColor: chartData.labels.map(l=>CAT_COLORS[l]||"#ccc"),
+        borderColor:"rgba(13,21,37,0.85)", borderWidth:3, hoverOffset:12
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:"65%",
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:"rgba(6,10,20,0.97)",
+          titleColor:"#f0f6ff", bodyColor:"#f0f6ff",
+          borderColor:"rgba(0,212,255,0.3)", borderWidth:1,
+          padding:14, cornerRadius:12,
+          callbacks:{
+            label: ctx => ` ₹${Number(ctx.parsed).toLocaleString("en-IN",{minimumFractionDigits:2})}`
+          }
+        }
+      },
+      animation:{ animateRotate:true, duration:900 }
+    }
+  });
+}
+
+/* ── Chart modal open/close ── */
+function openChartModal(){
+  if(!chartData.labels.length) return;
+  document.getElementById("chartModal").classList.add("active");
+  document.body.style.overflow = "hidden";
+  setTimeout(()=>renderModalChart(currentType), 80);
+}
+function closeChartModal(){
+  document.getElementById("chartModal").classList.remove("active");
+  document.body.style.overflow = "";
+  if(modalChart){ modalChart.destroy(); modalChart=null; }
+}
+
+/* ── Switch chart type ── */
+function switchChart(type){
+  currentType = type;
+  document.querySelectorAll(".ctsw-btn").forEach(b=>b.classList.remove("active"));
+  const map = { doughnut:"btnDoughnut", bar:"btnBar", line:"btnLine" };
+  document.getElementById(map[type]).classList.add("active");
+  if(modalChart){ modalChart.destroy(); modalChart=null; }
+  renderModalChart(type);
+}
+
+/* ── Render modal chart ── */
+function renderModalChart(type){
+  const canvas = document.getElementById("modalChart");
+  const empty  = document.getElementById("modalEmpty");
+  const total  = chartData.values.reduce((a,b)=>a+b, 0);
+  const count  = chartData.labels.length;
+
+  if(!count){
+    canvas.style.display="none"; empty.style.display="flex"; return;
+  }
+  canvas.style.display=""; empty.style.display="none";
+
+  /* update stat blocks */
+  document.getElementById("cmsTotal").textContent =
+    "₹" + total.toLocaleString("en-IN",{minimumFractionDigits:2});
+  document.getElementById("cmsAvg").textContent =
+    "₹" + (total/count).toLocaleString("en-IN",{maximumFractionDigits:0});
+  document.getElementById("cmsCount").textContent = count;
+
+  /* category list */
+  document.getElementById("cmsList").innerHTML = chartData.labels.map((l,i)=>{
+    const v   = chartData.values[i];
+    const pct = total ? (v/total*100).toFixed(1) : 0;
+    const col = CAT_COLORS[l]||"#ccc";
+    return `
+      <div class="cms-item">
+        <div class="cms-item-left">
+          <span class="cms-dot" style="background:${col}"></span>
+          <span class="cms-icon">${CAT_ICONS[l]||"📦"}</span>
+          <span class="cms-cat">${l}</span>
+        </div>
+        <div class="cms-item-right">
+          <div class="cms-bar-track">
+            <div class="cms-bar-fill" style="width:${pct}%;background:${col}"></div>
+          </div>
+          <div class="cms-nums">
+            <span class="cms-amt">₹${Number(v).toLocaleString("en-IN",{maximumFractionDigits:0})}</span>
+            <span class="cms-pct">${pct}%</span>
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+
+  const colors = chartData.labels.map(l=>CAT_COLORS[l]||"#ccc");
+  const commonTip = {
+    backgroundColor:"rgba(6,10,20,0.97)",
+    titleColor:"#f0f6ff", bodyColor:"#f0f6ff",
+    borderColor:"rgba(0,212,255,0.3)", borderWidth:1,
+    padding:16, cornerRadius:12
+  };
+
+  let cfg;
+  if(type === "doughnut"){
+    cfg = {
+      type:"doughnut",
+      data:{
+        labels:chartData.labels,
+        datasets:[{
+          data:chartData.values,
+          backgroundColor:colors,
+          borderColor:"rgba(13,21,37,0.85)", borderWidth:3, hoverOffset:16
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false, cutout:"58%",
+        plugins:{
+          legend:{ display:true, position:"bottom",
+            labels:{ color:"#8ba8cc", padding:20, font:{size:12,weight:'600'},
+              usePointStyle:true, pointStyleWidth:10 }},
+          tooltip:{ ...commonTip, callbacks:{
+            label:ctx=>` ₹${Number(ctx.parsed).toLocaleString("en-IN",{minimumFractionDigits:2})} (${(ctx.parsed/total*100).toFixed(1)}%)`
+          }}
+        },
+        animation:{ animateRotate:true, duration:700 }
+      }
+    };
+  } else if(type === "bar"){
+    cfg = {
+      type:"bar",
+      data:{
+        labels:chartData.labels,
+        datasets:[{
+          label:"Amount Spent (₹)",
+          data:chartData.values,
+          backgroundColor:colors.map(c=>c+"bb"),
+          borderColor:colors,
+          borderWidth:2, borderRadius:12, borderSkipped:false
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{ display:false },
+          tooltip:{ ...commonTip, callbacks:{
+            label:ctx=>` ₹${Number(ctx.parsed.y).toLocaleString("en-IN",{minimumFractionDigits:2})}`
+          }}
+        },
+        scales:{
+          x:{ ticks:{color:"#8ba8cc",font:{size:12}}, grid:{color:"rgba(99,179,237,0.06)"} },
+          y:{ ticks:{color:"#8ba8cc",callback:v=>"₹"+Number(v).toLocaleString("en-IN")},
+              grid:{color:"rgba(99,179,237,0.08)"} }
+        },
+        animation:{ duration:700 }
+      }
+    };
+  } else {
+    cfg = {
+      type:"line",
+      data:{
+        labels:chartData.labels,
+        datasets:[{
+          label:"Amount Spent (₹)",
+          data:chartData.values,
+          borderColor:"#00d4ff",
+          backgroundColor:"rgba(0,212,255,0.08)",
+          borderWidth:3,
+          pointRadius:8, pointHoverRadius:12,
+          pointBackgroundColor:colors,
+          pointBorderColor:"rgba(6,10,20,0.9)", pointBorderWidth:2,
+          fill:true, tension:0.4
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{ display:false },
+          tooltip:{ ...commonTip, callbacks:{
+            label:ctx=>` ₹${Number(ctx.parsed.y).toLocaleString("en-IN",{minimumFractionDigits:2})}`
+          }}
+        },
+        scales:{
+          x:{ ticks:{color:"#8ba8cc",font:{size:12}}, grid:{color:"rgba(99,179,237,0.06)"} },
+          y:{ ticks:{color:"#8ba8cc",callback:v=>"₹"+Number(v).toLocaleString("en-IN")},
+              grid:{color:"rgba(99,179,237,0.08)"} }
+        },
+        animation:{ duration:700 }
+      }
+    };
+  }
+  modalChart = new Chart(canvas, cfg);
+}
+
+/* ── Budget modal ── */
+function openBudgetModal(month){
+  document.getElementById("modalBudgetMonth").value = month||"";
+  document.getElementById("budgetModal").classList.add("active");
+}
+
+/* ── Flash auto-dismiss ── */
+document.querySelectorAll(".flash").forEach(f=>{
+  setTimeout(()=>{ f.style.opacity="0"; f.style.transition="opacity .4s"; }, 4000);
+  setTimeout(()=>f.remove(), 4500);
+});
+
+/* ── Table row stagger ── */
+document.querySelectorAll(".expense-table tbody tr").forEach((r,i)=>{
+  r.style.opacity="0"; r.style.transform="translateY(8px)";
+  r.style.transition=`opacity .3s ease ${i*.04}s, transform .3s ease ${i*.04}s`;
+  requestAnimationFrame(()=>{ r.style.opacity="1"; r.style.transform="translateY(0)"; });
+});
+
+/* ── Escape key closes modals ── */
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape"){
+    closeChartModal();
+    document.getElementById("budgetModal").classList.remove("active");
+  }
+});
+
+loadChart();
+</script>
+{% endblock %}
