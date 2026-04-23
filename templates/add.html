@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Add Expense — SpendSense{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Add Expense ✍️</h1><p class="page-sub">Record a new spending entry</p></div>
+</div>
+<div class="form-page">
+  <div class="card">
+    <div class="form-card-header"><h2>New Expense</h2><p>Fill in the details below to log your expense.</p></div>
+    <form method="POST" action="/add" novalidate>
+      <div class="form-group">
+        <label class="form-label">Amount (₹) <span class="req">*</span></label>
+        <div class="prefix-wrap"><span class="input-prefix">₹</span>
+        <input type="number" name="amount" class="form-input" placeholder="0.00" min="0.01" step="0.01"
+               value="{{ form_data.get('amount','') }}" required></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category <span class="req">*</span></label>
+        <select name="category" id="catSelect" class="form-input" required onchange="syncPills(this.value)">
+          <option value="" disabled {{ "selected" if not form_data.get("category") }}>Select a category</option>
+          {% for cat in categories %}
+            <option value="{{ cat }}" {{ "selected" if form_data.get("category")==cat }}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+        <div class="cat-pills" id="catPills">
+          {% set icons = {"Food":"🍔","Travel":"✈️","Shopping":"🛍️","Entertainment":"🎬","Health":"💊","Education":"📚","Others":"📦"} %}
+          {% for cat in categories %}
+            <button type="button" class="cat-pill {{ 'active' if form_data.get('category')==cat }}"
+                    onclick="pillPick('{{ cat }}')">{{ icons.get(cat,'📦') }} {{ cat }}</button>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date <span class="req">*</span></label>
+        <input type="date" name="date" class="form-input" value="{{ form_data.get('date','') }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description <span class="opt">(optional)</span></label>
+        <input type="text" name="description" class="form-input" placeholder="e.g. Lunch with friends"
+               value="{{ form_data.get('description','') }}" maxlength="200">
+        <span class="field-hint">A short note to remember this purchase</span>
+      </div>
+      <div class="form-actions">
+        <a href="/" class="btn-outline">← Cancel</a>
+        <button type="submit" class="btn lg">Save Expense 💾</button>
+      </div>
+    </form>
+  </div>
+  <div class="card tips-card">
+    <h4>💡 Quick Tips</h4>
+    <ul>
+      <li>Log expenses right away so you don't forget.</li>
+      <li>Use Description for easy recall later.</li>
+      <li>Set a monthly budget on the Dashboard.</li>
+      <li>Use UPI Tracker to import bank SMS messages.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function syncPills(val){
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.toggle('active',p.textContent.trim().endsWith(val)));
+}
+function pillPick(cat){
+  document.getElementById('catSelect').value=cat;syncPills(cat);
+}
+syncPills(document.getElementById('catSelect').value);
+</script>
+{% endblock %}

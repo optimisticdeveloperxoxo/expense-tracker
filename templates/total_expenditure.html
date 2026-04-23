@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Total Expenditure — SpendSense{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Total Expenditure 💰</h1>
+    <p class="page-sub">Combined view of all your expenses — manual entries, UPI transactions, and bank statement imports</p>
+  </div>
+  <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+    <form method="GET" action="/total_expenditure" style="display:flex;gap:.5rem;align-items:center">
+      <input type="month" name="month" value="{{ selected_month }}" class="form-input" style="width:auto" onchange="this.form.submit()">
+    </form>
+  </div>
+</div>
+
+<!-- Grand Total Hero -->
+<div class="total-hero-card">
+  <div class="total-hero-icon">💳</div>
+  <div>
+    <div class="total-hero-label">Grand Total Expenditure — {{ selected_month }}</div>
+    <div class="total-hero-amount">₹{{ "{:,.2f}".format(grand_total) }}</div>
+  </div>
+</div>
+
+<!-- Source Breakdown -->
+<div class="upi-stats-grid" style="margin-bottom:1.5rem">
+  <div class="stat-card" style="margin:0;border:1px solid rgba(0,212,255,0.2)">
+    <div class="stat-icon-wrap si-cyan">✏️</div>
+    <div class="stat-body">
+      <p class="stat-label">Manual Entries</p>
+      <h2 class="stat-value sv-cyan">₹{{ "{:,.2f}".format(manual_total) }}</h2>
+      {% if grand_total > 0 %}
+      <div class="mini-bar-track"><div class="mini-bar-fill" style="width:{{ (manual_total/grand_total*100)|int }}%;background:var(--cyan)"></div></div>
+      <p class="stat-label" style="margin-top:.3rem">{{ (manual_total/grand_total*100)|round(1) }}% of total</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="stat-card" style="margin:0;border:1px solid rgba(124,58,237,0.2)">
+    <div class="stat-icon-wrap si-violet">📲</div>
+    <div class="stat-body">
+      <p class="stat-label">UPI Tracker</p>
+      <h2 class="stat-value sv-violet">₹{{ "{:,.2f}".format(upi_total) }}</h2>
+      {% if grand_total > 0 %}
+      <div class="mini-bar-track"><div class="mini-bar-fill" style="width:{{ (upi_total/grand_total*100)|int }}%;background:#7c3aed"></div></div>
+      <p class="stat-label" style="margin-top:.3rem">{{ (upi_total/grand_total*100)|round(1) }}% of total</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="stat-card" style="margin:0;border:1px solid rgba(0,229,160,0.2)">
+    <div class="stat-icon-wrap si-green">🏦</div>
+    <div class="stat-body">
+      <p class="stat-label">Bank Statement</p>
+      <h2 class="stat-value sv-green">₹{{ "{:,.2f}".format(bank_total) }}</h2>
+      {% if grand_total > 0 %}
+      <div class="mini-bar-track"><div class="mini-bar-fill" style="width:{{ (bank_total/grand_total*100)|int }}%;background:var(--emerald)"></div></div>
+      <p class="stat-label" style="margin-top:.3rem">{{ (bank_total/grand_total*100)|round(1) }}% of total</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Category Breakdown -->
+{% if category_totals %}
+<div class="card" style="margin-bottom:1.5rem">
+  <div class="card-header"><h3>Category Breakdown</h3></div>
+  <div style="padding:1.25rem;display:flex;flex-direction:column;gap:.75rem">
+    {% set cat_colors = {'Food':'#FF6B6B','Travel':'#4ECDC4','Shopping':'#FFD93D','Entertainment':'#A29BFE','Health':'#6BCB77','Education':'#60A5FA','Others':'#FB923C'} %}
+    {% set cat_icons  = {'Food':'🍔','Travel':'✈️','Shopping':'🛍️','Entertainment':'🎬','Health':'💊','Education':'📚','Others':'📦'} %}
+    {% for ct in category_totals %}
+    <div style="display:flex;align-items:center;gap:1rem">
+      <div style="width:2rem;text-align:center;font-size:1.1rem">{{ cat_icons.get(ct.category,'📦') }}</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+          <span style="font-weight:600;font-size:.9rem">{{ ct.category }}</span>
+          <span style="font-weight:700;color:{{ cat_colors.get(ct.category,'#ccc') }}">₹{{ "{:,.2f}".format(ct.total) }}</span>
+        </div>
+        <div class="mini-bar-track">
+          <div class="mini-bar-fill" style="width:{{ (ct.total/grand_total*100)|int if grand_total > 0 else 0 }}%;background:{{ cat_colors.get(ct.category,'#888') }}"></div>
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:var(--t2);min-width:3.5rem;text-align:right">
+        {{ (ct.total/grand_total*100)|round(1) if grand_total > 0 else 0 }}%
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Monthly Trend -->
+{% if monthly_data %}
+<div class="card">
+  <div class="card-header"><h3>Monthly Trend (Last 6 Months)</h3></div>
+  <div style="padding:1.25rem;display:flex;flex-direction:column;gap:.65rem">
+    {% set max_month = monthly_data|map(attribute='total')|max %}
+    {% for md in monthly_data %}
+    <div style="display:flex;align-items:center;gap:1rem">
+      <div style="min-width:5rem;font-size:.82rem;color:var(--t2);font-weight:600">{{ md.month }}</div>
+      <div style="flex:1">
+        <div class="mini-bar-track">
+          <div class="mini-bar-fill" style="width:{{ (md.total/max_month*100)|int if max_month > 0 else 0 }}%;background:var(--g-main)"></div>
+        </div>
+      </div>
+      <div style="font-weight:700;font-size:.85rem;min-width:6rem;text-align:right">₹{{ "{:,.0f}".format(md.total) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if grand_total == 0 %}
+<div class="empty-state">
+  <div class="empty-icon">💰</div>
+  <h4>No expenses for {{ selected_month }}</h4>
+  <p>Add expenses manually, import UPI transactions, or upload a bank statement to see your total expenditure here.</p>
+</div>
+{% endif %}
+{% endblock %}

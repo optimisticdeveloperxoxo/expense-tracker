@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Bank Statement — SpendSense{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Bank Statement 🏦</h1>
+  <p class="page-sub">Upload your bank statement (PDF or CSV) to automatically import and analyse your expenses</p></div>
+</div>
+
+<!-- Stats row -->
+<div class="upi-stats-grid" style="margin-bottom:1.5rem">
+  <div class="stat-card sc-total" style="margin:0">
+    <div class="stat-icon-wrap si-cyan">🏦</div>
+    <div class="stat-body">
+      <p class="stat-label">Total Bank Imported</p>
+      <h2 class="stat-value sv-cyan">₹{{ "{:,.2f}".format(bank_total) }}</h2>
+    </div>
+  </div>
+  <div class="stat-card sc-count" style="margin:0">
+    <div class="stat-icon-wrap si-violet">📅</div>
+    <div class="stat-body">
+      <p class="stat-label">This Month (Bank)</p>
+      <h2 class="stat-value sv-violet">₹{{ "{:,.2f}".format(month_total) }}</h2>
+    </div>
+  </div>
+  <div class="stat-card sc-top" style="margin:0">
+    <div class="stat-icon-wrap si-green">🧾</div>
+    <div class="stat-body">
+      <p class="stat-label">Bank Transactions</p>
+      <h2 class="stat-value sv-green">{{ bank_expenses|length }}</h2>
+    </div>
+  </div>
+</div>
+
+<!-- How it works -->
+<div class="how-it-works">
+  <h3>⚙️ How It Works</h3>
+  <div class="steps-grid">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>Download your statement</h4>
+      <p>Log into your bank's net banking or app and download your account statement as PDF or CSV</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Upload here</h4>
+      <p>Select your PDF or CSV statement file and choose a fallback category for unrecognised transactions</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>Auto-analysed</h4>
+      <p>We scan all debit entries, auto-categorise them and add them to your expense tracker instantly</p>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Form -->
+<div class="sms-form">
+  <h3>📂 Upload Bank Statement</h3>
+  <p class="form-subtitle">Supported formats: <strong>PDF</strong> (most Indian bank e-statements) and <strong>CSV</strong> (exported from net banking)</p>
+  <form method="POST" action="/bank_statement/upload" enctype="multipart/form-data">
+    <div class="form-group">
+      <label class="form-label">Statement File <span class="req">*</span></label>
+      <div class="file-upload-area" id="fileDropArea">
+        <div class="file-upload-icon">📄</div>
+        <div class="file-upload-text">Drag & drop your PDF or CSV here, or <span class="file-upload-link">browse</span></div>
+        <div class="file-upload-hint">Supports: PDF & CSV — SBI, HDFC, ICICI, Axis, Kotak, Yes Bank, and more</div>
+        <input type="file" name="statement_file" id="fileInput" accept=".pdf,.csv" required style="display:none">
+        <div class="file-selected-name" id="fileSelectedName" style="display:none"></div>
+      </div>
+    </div>
+    <div class="sms-grid">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Fallback Category <span class="opt">(if auto-detect fails)</span></label>
+        <select name="category" class="form-input">
+          {% for cat in categories %}
+            <option value="{{ cat }}" {{ "selected" if cat=="Others" }}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+        <span class="field-hint">Used only when merchant is unrecognisable</span>
+      </div>
+    </div>
+    <div style="margin-top:1.25rem;display:flex;gap:.75rem;flex-wrap:wrap">
+      <button type="submit" class="btn lg">📥 Import Statement</button>
+    </div>
+  </form>
+
+  <div class="sms-examples" style="margin-top:1.5rem">
+    <h4>📋 Supported Bank Formats</h4>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;margin-top:.75rem">
+      {% for bank in ["SBI","HDFC","ICICI","Axis Bank","Kotak","Yes Bank","PNB","Bank of Baroda","Canara Bank","IndusInd"] %}
+      <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:10px;padding:.65rem 1rem;font-size:.82rem;font-weight:600;color:var(--t2);">
+        🏦 {{ bank }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Imported Bank Transactions -->
+<div class="card">
+  <div class="card-header">
+    <h3>Imported Bank Transactions</h3>
+    {% if bank_expenses %}<span class="badge">{{ bank_expenses|length }} records</span>{% endif %}
+  </div>
+
+  {% if bank_expenses %}
+  <div class="upi-txn-list">
+    {% set cat_colors = {'Food':'#FF6B6B','Travel':'#4ECDC4','Shopping':'#FFD93D','Entertainment':'#A29BFE','Health':'#6BCB77','Education':'#60A5FA','Others':'#FB923C'} %}
+    {% set cat_icons  = {'Food':'🍔','Travel':'✈️','Shopping':'🛍️','Entertainment':'🎬','Health':'💊','Education':'📚','Others':'📦'} %}
+    {% set cat_class  = {'Food':'cb-food','Travel':'cb-travel','Shopping':'cb-shopping','Entertainment':'cb-entertainment','Health':'cb-health','Education':'cb-education','Others':'cb-others'} %}
+    {% for exp in bank_expenses %}
+    <div class="upi-txn">
+      <div class="upi-txn-icon" style="background:{{ cat_colors.get(exp.category,'#ccc') }}20;border:1px solid {{ cat_colors.get(exp.category,'#ccc') }}40">
+        {{ cat_icons.get(exp.category,'📦') }}
+      </div>
+      <div class="upi-txn-info">
+        <div class="upi-txn-name">{{ exp.description }}</div>
+        <div class="upi-txn-meta">
+          {{ exp.date }}
+          <span class="cat-badge {{ cat_class.get(exp.category,'cb-others') }}">{{ exp.category }}</span>
+        </div>
+      </div>
+      <div class="upi-txn-amount">− ₹{{ "{:,.2f}".format(exp.amount) }}</div>
+      <form method="POST" action="/bank_statement/delete/{{ exp.id }}" style="margin-left:.5rem"
+            onsubmit="return confirm('Remove this bank transaction?')">
+        <button type="submit" class="action-btn del-btn" title="Remove">🗑️</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🏦</div>
+    <h4>No bank transactions yet</h4>
+    <p>Upload your bank statement PDF or CSV above to import transactions automatically.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const dropArea = document.getElementById('fileDropArea');
+const fileInput = document.getElementById('fileInput');
+const nameDisplay = document.getElementById('fileSelectedName');
+
+dropArea.addEventListener('click', () => fileInput.click());
+dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('drag-over'); });
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-over'));
+dropArea.addEventListener('drop', e => {
+  e.preventDefault();
+  dropArea.classList.remove('drag-over');
+  if(e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    showFileName(e.dataTransfer.files[0].name);
+  }
+});
+fileInput.addEventListener('change', () => {
+  if(fileInput.files.length) showFileName(fileInput.files[0].name);
+});
+function showFileName(name) {
+  nameDisplay.textContent = '✅ Selected: ' + name;
+  nameDisplay.style.display = 'block';
+  document.querySelector('.file-upload-text').style.display = 'none';
+}
+document.querySelectorAll('.flash').forEach(f=>{
+  setTimeout(()=>{f.style.opacity='0';f.style.transition='opacity .4s';},4000);
+  setTimeout(()=>f.remove(),4500);
+});
+</script>
+{% endblock %}

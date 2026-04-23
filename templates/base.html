@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}SpendSense{% endblock %}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══════════════════════════════ -->
+<nav class="sidebar" id="sidebar">
+
+  <!-- Logo → clickable back to dashboard -->
+  <a href="/" class="sb-brand" title="Go to Dashboard">
+    <div class="sb-brand-icon">💹</div>
+    <span class="sb-brand-name">SpendSense</span>
+  </a>
+
+  <div class="sb-user">
+    <div class="sb-avatar">{{ session.user_name[0].upper() }}</div>
+    <div>
+      <div class="sb-uname">{{ session.user_name }}</div>
+      <div class="sb-email">{{ session.user_email }}</div>
+    </div>
+  </div>
+
+  <div class="nav-sec-label">Main</div>
+  <ul class="nav-links">
+    <li><a href="/" class="{{ 'active' if request.path == '/' }}">
+      <span class="nav-icon">🏠</span><span>Dashboard</span></a></li>
+    <li><a href="/add" class="{{ 'active' if request.path == '/add' }}">
+      <span class="nav-icon">➕</span><span>Add Expense</span></a></li>
+  </ul>
+
+  <div class="nav-sec-label">Integrations</div>
+  <ul class="nav-links">
+    <li><a href="/upi" class="{{ 'active' if request.path == '/upi' }}">
+      <span class="nav-icon">📲</span><span>UPI Tracker</span></a></li>
+    <li><a href="/bank_statement" class="{{ 'active' if request.path == '/bank_statement' }}">
+      <span class="nav-icon">🏦</span><span>Bank Statement</span></a></li>
+    <li><a href="/total_expenditure" class="{{ 'active' if request.path == '/total_expenditure' }}">
+      <span class="nav-icon">💰</span><span>Total Expenditure</span></a></li>
+  </ul>
+
+  <div class="nav-sec-label">Tools</div>
+  <ul class="nav-links">
+    <li>
+      <button onclick="toggleCalculator()" id="calcNavBtn">
+        <span class="nav-icon">🧮</span><span>Calculator</span>
+      </button>
+    </li>
+    <li>
+      <button onclick="openThemeModal()" id="themeNavBtn">
+        <span class="nav-icon">🎨</span><span>Themes</span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="sb-footer">
+    <a href="/logout" class="logout-btn">
+      <span class="nav-icon">🚪</span><span>Log Out</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ═══ FLOATING CALCULATOR ═══════════════════ -->
+<div id="calcWidget" class="calc-widget">
+  <div class="calc-header" id="calcDragHandle">
+    <div class="calc-title-row">
+      <span class="calc-title-icon">🧮</span>
+      <span class="calc-title-text">Calculator</span>
+    </div>
+    <div class="calc-header-btns">
+      <button class="calc-hbtn" onclick="calcInput('AC')" title="Clear all">C</button>
+      <button class="calc-hbtn calc-close" onclick="toggleCalculator()" title="Close">×</button>
+    </div>
+  </div>
+  <div class="calc-screen">
+    <div class="calc-expr" id="calcExpr">&nbsp;</div>
+    <div class="calc-display" id="calcDisplay">0</div>
+  </div>
+  <div class="calc-grid">
+    <button class="ck ck-fn"  onclick="calcInput('AC')">AC</button>
+    <button class="ck ck-fn"  onclick="calcInput('+/-')">+/−</button>
+    <button class="ck ck-fn"  onclick="calcInput('%')">%</button>
+    <button class="ck ck-op"  onclick="calcInput('÷')">÷</button>
+
+    <button class="ck" onclick="calcInput('7')">7</button>
+    <button class="ck" onclick="calcInput('8')">8</button>
+    <button class="ck" onclick="calcInput('9')">9</button>
+    <button class="ck ck-op"  onclick="calcInput('×')">×</button>
+
+    <button class="ck" onclick="calcInput('4')">4</button>
+    <button class="ck" onclick="calcInput('5')">5</button>
+    <button class="ck" onclick="calcInput('6')">6</button>
+    <button class="ck ck-op"  onclick="calcInput('−')">−</button>
+
+    <button class="ck" onclick="calcInput('1')">1</button>
+    <button class="ck" onclick="calcInput('2')">2</button>
+    <button class="ck" onclick="calcInput('3')">3</button>
+    <button class="ck ck-op"  onclick="calcInput('+')">+</button>
+
+    <button class="ck ck-zero" onclick="calcInput('0')">0</button>
+    <button class="ck" onclick="calcInput('.')">.</button>
+    <button class="ck ck-eq"  onclick="calcInput('=')">=</button>
+  </div>
+</div>
+
+<!-- ═══ MOBILE TOPBAR ═════════════════════════ -->
+<header class="topbar">
+  <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+  <a href="/" class="topbar-brand">💹 SpendSense</a>
+  <a href="/add" class="btn sm">+ Add</a>
+</header>
+
+<!-- ═══ PAGE CONTENT ══════════════════════════ -->
+<div class="page-wrap">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for cat, msg in messages %}
+          <div class="flash flash-{{ cat }}">
+            <span>{{ msg }}</span>
+            <button onclick="this.parentElement.remove()">×</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+
+<!-- ═══ BUDGET MODAL ══════════════════════════ -->
+<div class="modal-overlay" id="budgetModal" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>💰 Set Monthly Budget</h3>
+      <button class="modal-close" onclick="document.getElementById('budgetModal').classList.remove('active')">×</button>
+    </div>
+    <form method="POST" action="/set_budget">
+      <div class="form-group">
+        <label class="form-label">Month</label>
+        <input type="month" name="month" id="modalBudgetMonth" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Budget Amount (₹)</label>
+        <input type="number" name="budget_amount" class="form-input" placeholder="e.g. 10000" min="1" step="0.01">
+      </div>
+      <button type="submit" class="btn lg" style="width:100%;justify-content:center">Save Budget 💾</button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ THEMES MODAL ═══════════════════════════ -->
+<div class="modal-overlay" id="themeModal" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <h3>🎨 Choose Theme</h3>
+      <button class="modal-close" onclick="document.getElementById('themeModal').classList.remove('active')">×</button>
+    </div>
+    <div style="padding:1.25rem">
+      <div class="theme-section-label">🌙 Dark Themes</div>
+      <div class="theme-grid">
+        <button class="theme-swatch" data-theme="default" title="Deep Space (Default)">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#060a14,#0d1525);border:2px solid #00d4ff"></div>
+          <span>Deep Space</span>
+        </button>
+        <button class="theme-swatch" data-theme="dark-midnight" title="Midnight Blue">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a0a1a,#1a1a3e);border:2px solid #6366f1"></div>
+          <span>Midnight</span>
+        </button>
+        <button class="theme-swatch" data-theme="dark-forest" title="Dark Forest">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a140a,#0d2510);border:2px solid #22c55e"></div>
+          <span>Forest</span>
+        </button>
+        <button class="theme-swatch" data-theme="dark-ember" title="Ember Dark">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#140a0a,#251010);border:2px solid #f97316"></div>
+          <span>Ember</span>
+        </button>
+        <button class="theme-swatch" data-theme="dark-purple" title="Royal Purple">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0f0a14,#1e1030);border:2px solid #a855f7"></div>
+          <span>Royal</span>
+        </button>
+      </div>
+      <div class="theme-section-label" style="margin-top:1.25rem">☀️ Light Themes</div>
+      <div class="theme-grid">
+        <button class="theme-swatch" data-theme="light-clean" title="Clean White">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#f8fafc,#e2e8f0);border:2px solid #3b82f6"></div>
+          <span>Clean</span>
+        </button>
+        <button class="theme-swatch" data-theme="light-warm" title="Warm Sand">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#fefce8,#fef3c7);border:2px solid #f59e0b"></div>
+          <span>Warm Sand</span>
+        </button>
+        <button class="theme-swatch" data-theme="light-rose" title="Rose Quartz">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#fff1f2,#ffe4e6);border:2px solid #f43f5e"></div>
+          <span>Rose</span>
+        </button>
+        <button class="theme-swatch" data-theme="light-mint" title="Mint Fresh">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #10b981"></div>
+          <span>Mint</span>
+        </button>
+        <button class="theme-swatch" data-theme="light-lavender" title="Lavender Mist">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:2px solid #8b5cf6"></div>
+          <span>Lavender</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
