@@ -281,7 +281,8 @@ input,select,textarea{font-family:inherit}
 /* ══ MAIN GRID ════════════════════════════════ */
 .main-grid{display:grid;grid-template-columns:310px 1fr;gap:1.25rem;align-items:start}
 .sidebar-col{display:flex;flex-direction:column;gap:1.25rem}
-.chart-wrap{height:230px;display:flex;align-items:center;justify-content:center;position:relative;width:100%;max-width:100%;}
+.chart-wrap{height:230px;display:flex;align-items:center;justify-content:center;position:relative;width:100%;max-width:100%;overflow:hidden;box-sizing:border-box;}
+.chart-wrap canvas{max-width:100% !important;box-sizing:border-box;}
 .chart-empty{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   color:var(--t3);font-size:.85rem;flex-direction:column;gap:.5rem;text-align:center;
@@ -737,6 +738,10 @@ textarea.form-input{resize:vertical;min-height:100px;line-height:1.6}
   cursor: pointer;
   transition: border-color .2s, box-shadow .25s, transform .2s;
   position: relative;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 .chart-card-clickable:hover {
   border-color: rgba(0,212,255,0.4);
@@ -1478,4 +1483,156 @@ body[class*="theme-light"] .topbar {
   .stats-bar { grid-template-columns: 1fr !important; }
   .upi-stats-grid { grid-template-columns: 1fr !important; }
   .theme-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* ══ MOBILE CHART & LAYOUT FIX (appended) ══════════════════════════
+   Ensures the chart, sidebar col, and all cards never overflow the
+   mobile viewport. Applies at ≤680px (phone) and tightens at ≤400px.
+═══════════════════════════════════════════════════════════════════ */
+@media(max-width: 680px) {
+
+  /* ── Root containment ── */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+  }
+
+  /* ── Page wrap: safe padding so nothing touches edges ── */
+  .page-wrap {
+    padding-left: .85rem !important;
+    padding-right: .85rem !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ── Main grid: single column, full width ── */
+  .main-grid {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── Sidebar column: full width, centered ── */
+  .sidebar-col {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── Chart card: full width, no overflow ── */
+  .chart-card-clickable,
+  #chartCardOuter {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Chart wrap: constrained height, centered, no overflow ── */
+  .chart-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 220px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* ── Canvas: never wider than its container ── */
+  canvas,
+  .chart-wrap canvas,
+  #categoryChart {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    margin: 0 auto !important;
+  }
+
+  /* ── All cards, stat cards, sections ── */
+  .card,
+  .stat-card,
+  .filter-bar,
+  .page-header,
+  .category-list {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Stats bar: 2-column grid ── */
+  .stats-bar {
+    grid-template-columns: 1fr 1fr !important;
+    gap: .6rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── Chart modal: full-width on mobile ── */
+  .chart-modal {
+    width: 98vw !important;
+    max-width: 98vw !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  .chart-modal-body {
+    grid-template-columns: 1fr !important;
+    overflow: hidden !important;
+  }
+
+  .chart-modal-canvas-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 240px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .chart-modal-canvas-wrap canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .chart-modal-stats {
+    max-height: 280px !important;
+    overflow-y: auto !important;
+  }
+
+  /* ── Chart type switcher: compact ── */
+  .chart-type-switcher {
+    gap: 2px !important;
+  }
+  .ctsw-btn {
+    padding: .35rem .55rem !important;
+    font-size: .72rem !important;
+  }
+
+  /* ── Catch-all: nothing stretches past the viewport ── */
+  * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  img, video, iframe {
+    max-width: 100% !important;
+  }
+}
+
+@media(max-width: 400px) {
+  .stats-bar {
+    grid-template-columns: 1fr !important;
+  }
+  .chart-wrap {
+    height: 190px !important;
+  }
 }
