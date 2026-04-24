@@ -18,7 +18,7 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect("postgresql://expense_tracker_deou_user:f1KiqkCWBvqD6XEafg45oaqM37BkE7k0@dpg-d792lr7pm1nc73ciikjg-a/expense_tracker_deou")
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
