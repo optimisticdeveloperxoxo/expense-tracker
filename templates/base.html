@@ -9,8 +9,14 @@
 </head>
 <body>
 
+<!-- ═══ SIDEBAR OVERLAY ══════════════════════ -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
 <!-- ═══ SIDEBAR ═══════════════════════════════ -->
 <nav class="sidebar" id="sidebar">
+
+  <!-- Close button (mobile only) -->
+  <button class="sb-close-btn" onclick="closeSidebar()" title="Close menu">✕</button>
 
   <!-- Logo → clickable back to dashboard -->
   <a href="/" class="sb-brand" title="Go to Dashboard">
@@ -27,7 +33,7 @@
   </div>
 
   <div class="nav-sec-label">Main</div>
-  <ul class="nav-links">
+  <ul class="nav-links" onclick="closeSidebar()">
     <li><a href="/" class="{{ 'active' if request.path == '/' }}">
       <span class="nav-icon">🏠</span><span>Dashboard</span></a></li>
     <li><a href="/add" class="{{ 'active' if request.path == '/add' }}">
@@ -110,7 +116,7 @@
 
 <!-- ═══ MOBILE TOPBAR ═════════════════════════ -->
 <header class="topbar">
-  <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+  <button class="hamburger" onclick="openSidebar()" aria-label="Open menu">☰</button>
   <a href="/" class="topbar-brand">💹 SpendSense</a>
   <a href="/add" class="btn sm">+ Add</a>
 </header>

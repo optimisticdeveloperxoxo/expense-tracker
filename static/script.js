@@ -273,3 +273,56 @@ document.addEventListener('click', function(e) {
     document.getElementById('themeModal').classList.remove('active');
   }, 300);
 });
+
+/* ── Mobile Sidebar (full-screen drawer) ────── */
+function openSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.add('open');
+  if (overlay) overlay.classList.add('active');
+  document.body.style.overflow = 'hidden'; // prevent bg scroll
+}
+
+function closeSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// Close sidebar on resize to desktop
+window.addEventListener('resize', function() {
+  if (window.innerWidth > 680) closeSidebar();
+});
+
+/* ── Theme Switcher ─────────────────────────── */
+function openThemeModal() {
+  document.getElementById('themeModal').classList.add('active');
+  const current = localStorage.getItem('ss-theme') || 'default';
+  document.querySelectorAll('.theme-swatch').forEach(btn => {
+    btn.classList.toggle('active-theme', btn.dataset.theme === current);
+  });
+}
+
+function applyTheme(theme) {
+  const body = document.body;
+  Array.from(body.classList).filter(c => c.startsWith('theme-')).forEach(c => body.classList.remove(c));
+  if (theme !== 'default') body.classList.add('theme-' + theme);
+  localStorage.setItem('ss-theme', theme);
+}
+
+// Apply saved theme on load
+(function() {
+  const saved = localStorage.getItem('ss-theme');
+  if (saved && saved !== 'default') document.body.classList.add('theme-' + saved);
+})();
+
+document.addEventListener('click', function(e) {
+  const swatch = e.target.closest('.theme-swatch');
+  if (!swatch) return;
+  applyTheme(swatch.dataset.theme);
+  document.querySelectorAll('.theme-swatch').forEach(btn =>
+    btn.classList.toggle('active-theme', btn.dataset.theme === swatch.dataset.theme));
+  setTimeout(() => document.getElementById('themeModal').classList.remove('active'), 300);
+});
