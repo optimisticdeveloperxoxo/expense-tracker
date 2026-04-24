@@ -268,6 +268,7 @@ async function loadChart(){
   chartData   = await res.json();
 
   const canvas = document.getElementById("categoryChart");
+  const wrap   = canvas.parentElement;
   const empty  = document.getElementById("chartEmpty");
   const hint   = document.getElementById("chartClickHint");
   const card   = document.getElementById("chartCardOuter");
@@ -281,6 +282,15 @@ async function loadChart(){
   }
   canvas.style.display="";
   empty.style.display="none";
+
+  /* Force canvas to fit its container before Chart.js measures it */
+  const wrapW = wrap.clientWidth || 280;
+  const wrapH = Math.min(wrap.clientHeight || 220, 220);
+  canvas.width  = wrapW;
+  canvas.height = wrapH;
+  canvas.style.width  = "100%";
+  canvas.style.height = wrapH + "px";
+  canvas.style.display = "block";
 
   if(dashChart){ dashChart.destroy(); dashChart=null; }
   dashChart = new Chart(canvas, {
@@ -505,5 +515,11 @@ document.addEventListener("keydown", e=>{
 });
 
 loadChart();
+
+/* Re-render chart if screen resizes (rotation, zoom) */
+window.addEventListener('resize', () => {
+  if(dashChart){ dashChart.destroy(); dashChart=null; }
+  loadChart();
+});
 </script>
 {% endblock %}

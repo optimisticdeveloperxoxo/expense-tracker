@@ -282,7 +282,7 @@ input,select,textarea{font-family:inherit}
 .main-grid{display:grid;grid-template-columns:310px 1fr;gap:1.25rem;align-items:start}
 .sidebar-col{display:flex;flex-direction:column;gap:1.25rem}
 .chart-wrap{height:230px;display:flex;align-items:center;justify-content:center;position:relative;width:100%;max-width:100%;overflow:hidden;box-sizing:border-box;}
-.chart-wrap canvas{max-width:100% !important;box-sizing:border-box;}
+.chart-wrap canvas{display:block;width:100% !important;max-width:100% !important;box-sizing:border-box;}
 .chart-empty{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   color:var(--t3);font-size:.85rem;flex-direction:column;gap:.5rem;text-align:center;
