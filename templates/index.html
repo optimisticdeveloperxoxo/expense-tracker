@@ -73,8 +73,8 @@
           <span class="chart-expand-badge">🔍 Expand</span>
         </div>
       </div>
-      <div class="chart-wrap" style="width:100%;max-width:100%;overflow:hidden;box-sizing:border-box;height:220px;position:relative;">
-        <canvas id="categoryChart" style="display:block;width:100% !important;max-width:100% !important;height:100% !important;box-sizing:border-box;"></canvas>
+      <div class="chart-wrap">
+        <canvas id="categoryChart"></canvas>
         <div class="chart-empty" id="chartEmpty" style="display:none">
           <span style="font-size:2rem">📭</span>
           <span>No data this month</span>
@@ -268,7 +268,6 @@ async function loadChart(){
   chartData   = await res.json();
 
   const canvas = document.getElementById("categoryChart");
-  const wrap   = canvas.parentElement;
   const empty  = document.getElementById("chartEmpty");
   const hint   = document.getElementById("chartClickHint");
   const card   = document.getElementById("chartCardOuter");
@@ -284,15 +283,6 @@ async function loadChart(){
   empty.style.display="none";
 
   if(dashChart){ dashChart.destroy(); dashChart=null; }
-
-  /* Nuclear fix: use the card width, never exceed screen width */
-  const screenW = Math.min(window.innerWidth, document.documentElement.clientWidth);
-  const cardW   = Math.min(card ? card.offsetWidth : 300, screenW - 32);
-  const size    = Math.max(Math.min(cardW, 280), 180); /* square, fits screen */
-  canvas.style.cssText = "display:block !important; width:" + size + "px !important; height:" + size + "px !important; max-width:100% !important; margin:0 auto !important;";
-  canvas.width  = size;
-  canvas.height = size;
-
   dashChart = new Chart(canvas, {
     type:"doughnut",
     data:{
@@ -304,7 +294,7 @@ async function loadChart(){
       }]
     },
     options:{
-      responsive:false, maintainAspectRatio:true, cutout:"65%",
+      responsive:true, maintainAspectRatio:false, cutout:"65%",
       plugins:{
         legend:{ display:false },
         tooltip:{
@@ -515,11 +505,5 @@ document.addEventListener("keydown", e=>{
 });
 
 loadChart();
-
-/* Re-render chart if screen resizes (rotation, zoom) */
-window.addEventListener('resize', () => {
-  if(dashChart){ dashChart.destroy(); dashChart=null; }
-  loadChart();
-});
 </script>
 {% endblock %}
