@@ -19,14 +19,14 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 DATABASE_URL = os.environ.get("DATABASE_URL")  # set this on Render
 
 if DATABASE_URL:
-    import psycopg2
-    import psycopg2.extras
-    # Render gives postgres:// but psycopg2 needs postgresql://
+    import psycopg
+    import psycopg.rows
+    # Render gives postgres:// but psycopg needs postgresql://
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
     def get_db():
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+        conn = psycopg.connect(DATABASE_URL, row_factory=psycopg.rows.dict_row)
         return conn
 
     def qmark(sql):
