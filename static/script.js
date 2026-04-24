@@ -47,6 +47,8 @@ let calcState = {
 };
 
 function toggleCalculator() {
+  // Close sidebar on mobile before opening calculator
+  if (window.innerWidth <= 680) closeSidebar();
   const w = document.getElementById('calcWidget');
   if (!w) return;
   const isOpen = w.classList.contains('open');
@@ -233,71 +235,8 @@ document.addEventListener('keydown', e => {
 
 /* ── Theme Switcher ─────────────────────────── */
 function openThemeModal() {
-  document.getElementById('themeModal').classList.add('active');
-  const current = localStorage.getItem('ss-theme') || 'default';
-  document.querySelectorAll('.theme-swatch').forEach(btn => {
-    btn.classList.toggle('active-theme', btn.dataset.theme === current);
-  });
-}
-
-function applyTheme(theme) {
-  const body = document.body;
-  // Remove all theme classes
-  const themeClasses = Array.from(body.classList).filter(c => c.startsWith('theme-'));
-  themeClasses.forEach(c => body.classList.remove(c));
-  if (theme !== 'default') {
-    body.classList.add('theme-' + theme);
-  }
-  localStorage.setItem('ss-theme', theme);
-}
-
-// Apply saved theme on load
-(function() {
-  const saved = localStorage.getItem('ss-theme');
-  if (saved && saved !== 'default') {
-    document.body.classList.add('theme-' + saved);
-  }
-})();
-
-// Theme swatch click handler
-document.addEventListener('click', function(e) {
-  const swatch = e.target.closest('.theme-swatch');
-  if (!swatch) return;
-  const theme = swatch.dataset.theme;
-  applyTheme(theme);
-  document.querySelectorAll('.theme-swatch').forEach(btn => {
-    btn.classList.toggle('active-theme', btn.dataset.theme === theme);
-  });
-  // Close modal after short delay
-  setTimeout(() => {
-    document.getElementById('themeModal').classList.remove('active');
-  }, 300);
-});
-
-/* ── Mobile Sidebar (full-screen drawer) ────── */
-function openSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-  sidebar.classList.add('open');
-  if (overlay) overlay.classList.add('active');
-  document.body.style.overflow = 'hidden'; // prevent bg scroll
-}
-
-function closeSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-  sidebar.classList.remove('open');
-  if (overlay) overlay.classList.remove('active');
-  document.body.style.overflow = '';
-}
-
-// Close sidebar on resize to desktop
-window.addEventListener('resize', function() {
-  if (window.innerWidth > 680) closeSidebar();
-});
-
-/* ── Theme Switcher ─────────────────────────── */
-function openThemeModal() {
+  // Close sidebar on mobile before opening theme modal
+  if (window.innerWidth <= 680) closeSidebar();
   document.getElementById('themeModal').classList.add('active');
   const current = localStorage.getItem('ss-theme') || 'default';
   document.querySelectorAll('.theme-swatch').forEach(btn => {
@@ -312,17 +251,43 @@ function applyTheme(theme) {
   localStorage.setItem('ss-theme', theme);
 }
 
-// Apply saved theme on load
+// Apply saved theme on page load
 (function() {
   const saved = localStorage.getItem('ss-theme');
   if (saved && saved !== 'default') document.body.classList.add('theme-' + saved);
 })();
 
+// Theme swatch click
 document.addEventListener('click', function(e) {
   const swatch = e.target.closest('.theme-swatch');
   if (!swatch) return;
   applyTheme(swatch.dataset.theme);
   document.querySelectorAll('.theme-swatch').forEach(btn =>
     btn.classList.toggle('active-theme', btn.dataset.theme === swatch.dataset.theme));
-  setTimeout(() => document.getElementById('themeModal').classList.remove('active'), 300);
+  setTimeout(() => {
+    const m = document.getElementById('themeModal');
+    if (m) m.classList.remove('active');
+  }, 300);
+});
+
+/* ── Mobile Sidebar (full-screen drawer) ────── */
+function openSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.add('open');
+  if (overlay) overlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// Close sidebar on resize to desktop
+window.addEventListener('resize', function() {
+  if (window.innerWidth > 680) closeSidebar();
 });
