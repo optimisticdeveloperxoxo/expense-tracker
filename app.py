@@ -9,7 +9,7 @@ import os, hashlib, re, random, string
 from datetime import date, datetime
 
 app = Flask(__name__)
-app.secret_key = "spendsense_secret_key_2024_pbl"
+app.secret_key = os.environ.get("SECRET_KEY", "fallback_only_for_local_dev")
 CATEGORIES = ["Food", "Travel", "Shopping", "Entertainment", "Health", "Education", "Others"]
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
